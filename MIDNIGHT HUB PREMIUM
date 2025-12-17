@@ -1,0 +1,349 @@
+--// MIDNIGHT HUB PREMIUM - COMPLETO PRETO + AZUL
+--// ESP + AIM + TEAM CHECK + MINIMIZAR + LOGIN + M1/M2 SELECTOR
+--// by Th.exe
+
+-- ================= SERVICES =================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+local LP = Players.LocalPlayer
+
+-- ================= CONFIG =================
+getgenv().CFG = {
+    ESP = true,
+    Name = true,
+    Health = true,
+    Skeleton = true,
+    Tracer = true,
+    Aim = false,
+    AimKey = "M2",
+    FOV = 30,
+    ShowFOV = true,
+    TeamCheck = false
+}
+
+local AccessGranted = false
+local SECRET_KEY = "MID-8271-XJ92-00PQ-9281"
+
+-- ================= LOGIN UI =================
+local loginGui = Instance.new("ScreenGui", LP.PlayerGui)
+loginGui.ResetOnSpawn = false
+
+local loginFrame = Instance.new("Frame", loginGui)
+loginFrame.Size = UDim2.fromOffset(360,200)
+loginFrame.Position = UDim2.new(0.5,0,0.5,0)
+loginFrame.AnchorPoint = Vector2.new(0.5,0.5)
+loginFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+loginFrame.Active = true
+loginFrame.Draggable = true
+local loginCorner = Instance.new("UICorner", loginFrame)
+loginCorner.CornerRadius = UDim.new(0,25)
+
+local loginTitle = Instance.new("TextLabel", loginFrame)
+loginTitle.Size = UDim2.new(1,0,0,50)
+loginTitle.BackgroundTransparency = 1
+loginTitle.Text = "🔒 MIDNIGHT HUB - LOGIN"
+loginTitle.Font = Enum.Font.GothamBold
+loginTitle.TextSize = 16
+loginTitle.TextColor3 = Color3.fromRGB(85,170,255)
+
+local loginBox = Instance.new("TextBox", loginFrame)
+loginBox.Size = UDim2.fromOffset(300,36)
+loginBox.Position = UDim2.new(0.5,-150,0,70)
+loginBox.Text = "" -- garante que o TextBox esteja vazio
+loginBox.PlaceholderText = "🗝Digite sua key..."
+loginBox.PlaceholderColor3 = Color3.fromRGB(150,150,150) -- opcional
+loginBox.ClearTextOnFocus = false
+loginBox.Font = Enum.Font.Gotham
+loginBox.TextSize = 14
+loginBox.BackgroundColor3 = Color3.fromRGB(20,20,20)
+loginBox.TextColor3 = Color3.fromRGB(85,170,255)
+local boxCorner = Instance.new("UICorner", loginBox)
+boxCorner.CornerRadius = UDim.new(0,12)
+
+local loginBtn = Instance.new("TextButton", loginFrame)
+loginBtn.Size = UDim2.fromOffset(300,36)
+loginBtn.Position = UDim2.new(0.5,-150,0,120)
+loginBtn.Text = "ENTRAR"
+loginBtn.Font = Enum.Font.GothamBold
+loginBtn.TextSize = 14
+loginBtn.BackgroundColor3 = Color3.fromRGB(20,20,20)
+loginBtn.TextColor3 = Color3.fromRGB(85,170,255)
+local btnCorner = Instance.new("UICorner", loginBtn)
+btnCorner.CornerRadius = UDim.new(0,15)
+
+local loginStatus = Instance.new("TextLabel", loginFrame)
+loginStatus.Size = UDim2.new(1,0,0,30)
+loginStatus.Position = UDim2.new(0,0,1,-30)
+loginStatus.BackgroundTransparency = 1
+loginStatus.Text = ""
+loginStatus.Font = Enum.Font.Gotham
+loginStatus.TextSize = 13
+loginStatus.TextColor3 = Color3.fromRGB(255,80,80)
+
+-- ================= HUB UI =================
+local gui = Instance.new("ScreenGui", LP.PlayerGui)
+gui.ResetOnSpawn = false
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(460,480)
+main.Position = UDim2.new(0,50,0,150)
+main.BackgroundColor3 = Color3.fromRGB(0,0,0)
+main.Active = true
+main.Draggable = true
+main.Visible = false
+local mainCorner = Instance.new("UICorner", main)
+mainCorner.CornerRadius = UDim.new(0,25)
+
+-- Título
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1,0,0,50)
+title.BackgroundTransparency = 1
+title.Text = "👑 MIDNIGHT HUB PREMIUM 👑"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextColor3 = Color3.fromRGB(85,170,255)
+
+-- ================= TOGGLES =================
+local y = 60
+local function Toggle(text,key)
+    local b = Instance.new("TextButton", main)
+    b.Size = UDim2.new(0,340,0,36)
+    b.Position = UDim2.new(0,60,0,y)
+    b.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 14
+    local corner = Instance.new("UICorner", b)
+    corner.CornerRadius = UDim.new(0,12)
+
+    local function refresh()
+        b.Text = text.." : "..(CFG[key] and "LIGADO" or "DESLIGADO")
+        b.TextColor3 = CFG[key] and Color3.fromRGB(85,170,255) or Color3.fromRGB(100,150,200)
+    end
+    refresh()
+
+    b.MouseButton1Click:Connect(function()
+        if not AccessGranted then return end
+        CFG[key] = not CFG[key]
+        refresh()
+    end)
+    y += 42
+end
+
+Toggle("👁‍🗨 ESP MASTER","ESP")
+Toggle("👁‍🗨 ESP NAME","Name")
+Toggle("👁‍🗨 ESP HEALTH","Health")
+Toggle("👁‍🗨 ESP SKELETON","Skeleton")
+Toggle("👁‍🗨 ESP TRACER LINE","Tracer")
+Toggle("🎯 AIM ASSIST","Aim")
+Toggle("👁‍🗨 TEAM CHECK","TeamCheck")
+
+-- ================= FOV BUTTONS =================
+local function createFOVButton(text,x)
+    local b = Instance.new("TextButton", main)
+    b.Size = UDim2.new(0,160,0,34)
+    b.Position = UDim2.new(0,x,0,y)
+    b.Text = text
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 14
+    b.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    local corner = Instance.new("UICorner", b)
+    corner.CornerRadius = UDim.new(0,12)
+    b.TextColor3 = Color3.fromRGB(85,170,255)
+    return b
+end
+
+local fovP = createFOVButton("FOV +",60)
+fovP.MouseButton1Click:Connect(function()
+    if not AccessGranted then return end
+    CFG.FOV = math.clamp(CFG.FOV + 10,50,400)
+end)
+
+local fovM = createFOVButton("FOV -",240)
+fovM.MouseButton1Click:Connect(function()
+    if not AccessGranted then return end
+    CFG.FOV = math.clamp(CFG.FOV - 10,50,400)
+end)
+
+-- ================= AIM SELECTOR =================
+local aimSelector = Instance.new("TextButton", main)
+aimSelector.Size = UDim2.new(0,340,0,36)
+aimSelector.Position = UDim2.new(0,60,0,y+50)
+aimSelector.Text = "Aim System: "..CFG.AimKey
+aimSelector.Font = Enum.Font.GothamBold
+aimSelector.TextSize = 14
+aimSelector.BackgroundColor3 = Color3.fromRGB(20,20,20)
+aimSelector.TextColor3 = Color3.fromRGB(85,170,255)
+local corner = Instance.new("UICorner", aimSelector)
+corner.CornerRadius = UDim.new(0,12)
+aimSelector.MouseButton1Click:Connect(function()
+    if not AccessGranted then return end
+    CFG.AimKey = (CFG.AimKey=="M1") and "M2" or "M1"
+    aimSelector.Text = "Aim System: "..CFG.AimKey
+end)
+
+-- ================= MINIMIZE PANEL =================
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        main.Visible = not main.Visible
+    end
+end)
+
+-- ================= DRAW UTILS =================
+local function NewLine()
+    local l = Drawing.new("Line")
+    l.Thickness = 1.5
+    l.Visible = false
+    l.Color = Color3.fromRGB(85,170,255)
+    return l
+end
+
+local function NewText()
+    local t = Drawing.new("Text")
+    t.Size = 13
+    t.Center = true
+    t.Outline = true
+    t.Font = 2
+    t.Visible = false
+    t.Color = Color3.fromRGB(85,170,255)
+    return t
+end
+
+-- ================= FOV CIRCLE =================
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.Filled = false
+FOVCircle.Transparency = 1
+FOVCircle.Color = Color3.fromRGB(85,170,255)
+
+RunService.RenderStepped:Connect(function()
+    if not AccessGranted then return end
+    FOVCircle.Position = UIS:GetMouseLocation()
+    FOVCircle.Radius = CFG.FOV
+    FOVCircle.Visible = CFG.Aim and CFG.ShowFOV
+end)
+
+-- ================= BONES =================
+local Bones = {
+    {"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
+    {"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},
+    {"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},
+    {"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LeftLowerLeg","LeftFoot"},
+    {"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"},{"RightLowerLeg","RightFoot"}
+}
+
+-- ================= ESP CORE =================
+local Cache = {}
+local function CreateESP(plr)
+    if plr == LP then return end
+    local data = {Name=NewText(),Health=NewText(),Skeleton={}}
+    for i=1,#Bones do data.Skeleton[i]=NewLine() end
+    Cache[plr]=data
+end
+local function RemoveESP(plr)
+    local e=Cache[plr] if not e then return end
+    e.Name:Remove() e.Health:Remove()
+    for _,l in pairs(e.Skeleton) do l:Remove() end
+    Cache[plr]=nil
+end
+
+for _,p in pairs(Players:GetPlayers()) do CreateESP(p) end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+RunService.RenderStepped:Connect(function()
+    if not AccessGranted then return end
+    for plr,e in pairs(Cache) do
+        e.Name.Visible=false e.Health.Visible=false
+        for _,l in pairs(e.Skeleton) do l.Visible=false end
+        if not CFG.ESP then continue end
+
+        local c=plr.Character
+        local h=c and c:FindFirstChildOfClass("Humanoid")
+        local hrp=c and c:FindFirstChild("HumanoidRootPart")
+        if not (c and h and hrp and h.Health>0) then continue end
+        if CFG.TeamCheck and plr.Team == LP.Team then continue end
+
+        local pos,on=Camera:WorldToViewportPoint(hrp.Position)
+        if not on or pos.Z<=0 then continue end
+
+        if CFG.Name then
+            e.Name.Text=plr.Name.." ["..math.floor((Camera.CFrame.Position-hrp.Position).Magnitude).."m]"
+            e.Name.Position=Vector2.new(pos.X,pos.Y-36)
+            e.Name.Visible=true
+        end
+        if CFG.Health then
+            e.Health.Text="HP: "..math.floor(h.Health)
+            e.Health.Position=Vector2.new(pos.X,pos.Y-20)
+            e.Health.Visible=true
+        end
+        if CFG.Skeleton or CFG.Tracer then
+            for i,b in ipairs(Bones) do
+                local p1=c:FindFirstChild(b[1])
+                local p2=c:FindFirstChild(b[2])
+                if p1 and p2 then
+                    local v1,s1=Camera:WorldToViewportPoint(p1.Position)
+                    local v2,s2=Camera:WorldToViewportPoint(p2.Position)
+                    if s1 and s2 and v1.Z>0 and v2.Z>0 then
+                        if CFG.Skeleton then
+                            e.Skeleton[i].From=Vector2.new(v1.X,v1.Y)
+                            e.Skeleton[i].To=Vector2.new(v2.X,v2.Y)
+                            e.Skeleton[i].Visible=true
+                        end
+                        if CFG.Tracer and i==1 then
+                            e.Skeleton[i].From=Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                            e.Skeleton[i].To=Vector2.new(v1.X,v1.Y)
+                            e.Skeleton[i].Visible=true
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ================= AIM ASSIST =================
+RunService.RenderStepped:Connect(function()
+    if not AccessGranted or not CFG.Aim then return end
+    local mouseButton = (CFG.AimKey=="M1") and Enum.UserInputType.MouseButton1 or Enum.UserInputType.MouseButton2
+    if not UIS:IsMouseButtonPressed(mouseButton) then return end
+
+    local mouse=UIS:GetMouseLocation()
+    local closest,dist=nil,CFG.FOV
+    for _,p in pairs(Players:GetPlayers()) do
+        if p~=LP and p.Character and p.Character:FindFirstChild("Head") then
+            local head=p.Character.Head
+            local pos,vis=Camera:WorldToViewportPoint(head.Position)
+            if vis and pos.Z>0 then
+                local mag=(Vector2.new(pos.X,pos.Y)-mouse).Magnitude
+                if mag<dist then
+                    dist=mag
+                    closest=head
+                end
+            end
+        end
+    end
+    if closest then
+        Camera.CFrame=CFrame.new(Camera.CFrame.Position,closest.Position)
+    end
+end)
+
+-- ================= LOGIN LOGIC =================
+loginBtn.MouseButton1Click:Connect(function()
+    if loginBox.Text == SECRET_KEY then
+        AccessGranted = true
+        loginStatus.TextColor3 = Color3.fromRGB(120,255,120)
+        loginStatus.Text = "✔ Key correta! Abrindo hub..."
+        task.wait(0.3)
+        loginGui:Destroy()
+        main.Visible = true
+    else
+        loginStatus.TextColor3 = Color3.fromRGB(255,80,80)
+        loginStatus.Text = "✖ Key inválida"
+    end
+end)
+
+print("✅ MIDNIGHT HUB ATIVO | UI PRETO + AZUL | ESP/AIM FUNCIONANDO")
