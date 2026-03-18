@@ -1,6 +1,6 @@
---// MIDNIGHT HUB PREMIUM - COMPLETO PRETO + AZUL
---// ESP + AIM + TEAM CHECK + MINIMIZAR + LOGIN + M1/M2 SELECTOR
---// by Th.exe
+--// MIDNIGHT HUB PREMIUM v2 - PAINEL COM ABAS
+--// ESP + AIM + TEAM CHECK + ABAS + MINIMIZAR (END) + LOGIN
+--// by Th.exe | UI redesenhada
 
 -- ================= SERVICES =================
 local Players = game:GetService("Players")
@@ -19,7 +19,7 @@ getgenv().CFG = {
     Tracer = true,
     Aim = false,
     AimKey = "M2",
-    FOV = 30,
+    FOV = 120,
     ShowFOV = true,
     TeamCheck = false
 }
@@ -27,168 +27,628 @@ getgenv().CFG = {
 local AccessGranted = false
 local SECRET_KEY = "MID-8271-XJ92-00PQ-9281"
 
+-- ================= CORES =================
+local C = {
+    BG       = Color3.fromRGB(6, 6, 10),
+    Panel    = Color3.fromRGB(12, 12, 18),
+    Card     = Color3.fromRGB(18, 18, 26),
+    Border   = Color3.fromRGB(30, 30, 45),
+    Accent   = Color3.fromRGB(60, 140, 255),
+    AccentDim= Color3.fromRGB(30, 80, 160),
+    TextMain = Color3.fromRGB(220, 230, 255),
+    TextDim  = Color3.fromRGB(100, 110, 140),
+    ON       = Color3.fromRGB(60, 200, 120),
+    OFF      = Color3.fromRGB(200, 60, 60),
+    White    = Color3.fromRGB(255, 255, 255),
+}
+
+-- ================= HELPERS =================
+local function Corner(parent, radius)
+    local c = Instance.new("UICorner", parent)
+    c.CornerRadius = UDim.new(0, radius or 8)
+    return c
+end
+
+local function Stroke(parent, color, thickness)
+    local s = Instance.new("UIStroke", parent)
+    s.Color = color or C.Border
+    s.Thickness = thickness or 1
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    return s
+end
+
+local function Gradient(parent, c0, c1, rotation)
+    local g = Instance.new("UIGradient", parent)
+    g.Color = ColorSequence.new(c0, c1)
+    g.Rotation = rotation or 90
+    return g
+end
+
+local function Tween(obj, props, t, style, dir)
+    TweenService:Create(obj,
+        TweenInfo.new(t or 0.18, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out),
+        props
+    ):Play()
+end
+
 -- ================= LOGIN UI =================
 local loginGui = Instance.new("ScreenGui", LP.PlayerGui)
 loginGui.ResetOnSpawn = false
+loginGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Blur de fundo
+local blur = Instance.new("BlurEffect", Camera)
+blur.Size = 16
+
+local loginBG = Instance.new("Frame", loginGui)
+loginBG.Size = UDim2.fromScale(1, 1)
+loginBG.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+loginBG.BackgroundTransparency = 0.4
+loginBG.ZIndex = 1
 
 local loginFrame = Instance.new("Frame", loginGui)
-loginFrame.Size = UDim2.fromOffset(360,200)
-loginFrame.Position = UDim2.new(0.5,0,0.5,0)
-loginFrame.AnchorPoint = Vector2.new(0.5,0.5)
-loginFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+loginFrame.Size = UDim2.fromOffset(380, 210)
+loginFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+loginFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+loginFrame.BackgroundColor3 = C.Panel
 loginFrame.Active = true
 loginFrame.Draggable = true
-local loginCorner = Instance.new("UICorner", loginFrame)
-loginCorner.CornerRadius = UDim.new(0,25)
+loginFrame.ZIndex = 2
+Corner(loginFrame, 18)
+Stroke(loginFrame, C.Accent, 1.5)
 
-local loginTitle = Instance.new("TextLabel", loginFrame)
-loginTitle.Size = UDim2.new(1,0,0,50)
-loginTitle.BackgroundTransparency = 1
-loginTitle.Text = "🔒 MIDNIGHT HUB - LOGIN"
-loginTitle.Font = Enum.Font.GothamBold
-loginTitle.TextSize = 16
-loginTitle.TextColor3 = Color3.fromRGB(85,170,255)
+-- Header da login
+local loginHeader = Instance.new("Frame", loginFrame)
+loginHeader.Size = UDim2.new(1, 0, 0, 52)
+loginHeader.BackgroundColor3 = C.BG
+loginHeader.ZIndex = 3
+Corner(loginHeader, 18)
+Gradient(loginHeader, C.AccentDim, C.BG, 90)
+
+local loginIcon = Instance.new("TextLabel", loginHeader)
+loginIcon.Size = UDim2.new(1, 0, 1, 0)
+loginIcon.BackgroundTransparency = 1
+loginIcon.Text = "🔐  MIDNIGHT HUB"
+loginIcon.Font = Enum.Font.GothamBold
+loginIcon.TextSize = 17
+loginIcon.TextColor3 = C.TextMain
+loginIcon.ZIndex = 4
+
+local loginSub = Instance.new("TextLabel", loginFrame)
+loginSub.Size = UDim2.new(1, 0, 0, 20)
+loginSub.Position = UDim2.new(0, 0, 0, 56)
+loginSub.BackgroundTransparency = 1
+loginSub.Text = "Insira sua chave de acesso"
+loginSub.Font = Enum.Font.Gotham
+loginSub.TextSize = 12
+loginSub.TextColor3 = C.TextDim
+loginSub.ZIndex = 3
 
 local loginBox = Instance.new("TextBox", loginFrame)
-loginBox.Size = UDim2.fromOffset(300,36)
-loginBox.Position = UDim2.new(0.5,-150,0,70)
-loginBox.Text = "" -- garante que o TextBox esteja vazio
-loginBox.PlaceholderText = "🗝Digite sua key..."
-loginBox.PlaceholderColor3 = Color3.fromRGB(150,150,150) -- opcional
+loginBox.Size = UDim2.fromOffset(320, 38)
+loginBox.Position = UDim2.new(0.5, -160, 0, 84)
+loginBox.Text = ""
+loginBox.PlaceholderText = "🗝  Chave de acesso..."
+loginBox.PlaceholderColor3 = C.TextDim
 loginBox.ClearTextOnFocus = false
 loginBox.Font = Enum.Font.Gotham
 loginBox.TextSize = 14
-loginBox.BackgroundColor3 = Color3.fromRGB(20,20,20)
-loginBox.TextColor3 = Color3.fromRGB(85,170,255)
-local boxCorner = Instance.new("UICorner", loginBox)
-boxCorner.CornerRadius = UDim.new(0,12)
+loginBox.BackgroundColor3 = C.Card
+loginBox.TextColor3 = C.Accent
+loginBox.ZIndex = 3
+Corner(loginBox, 10)
+Stroke(loginBox, C.Border)
 
 local loginBtn = Instance.new("TextButton", loginFrame)
-loginBtn.Size = UDim2.fromOffset(300,36)
-loginBtn.Position = UDim2.new(0.5,-150,0,120)
+loginBtn.Size = UDim2.fromOffset(320, 36)
+loginBtn.Position = UDim2.new(0.5, -160, 0, 132)
 loginBtn.Text = "ENTRAR"
 loginBtn.Font = Enum.Font.GothamBold
 loginBtn.TextSize = 14
-loginBtn.BackgroundColor3 = Color3.fromRGB(20,20,20)
-loginBtn.TextColor3 = Color3.fromRGB(85,170,255)
-local btnCorner = Instance.new("UICorner", loginBtn)
-btnCorner.CornerRadius = UDim.new(0,15)
+loginBtn.BackgroundColor3 = C.AccentDim
+loginBtn.TextColor3 = C.White
+loginBtn.ZIndex = 3
+Corner(loginBtn, 10)
+Gradient(loginBtn, C.AccentDim, C.Accent, 90)
+
+loginBtn.MouseEnter:Connect(function()
+    Tween(loginBtn, {BackgroundColor3 = C.Accent}, 0.12)
+end)
+loginBtn.MouseLeave:Connect(function()
+    Tween(loginBtn, {BackgroundColor3 = C.AccentDim}, 0.12)
+end)
 
 local loginStatus = Instance.new("TextLabel", loginFrame)
-loginStatus.Size = UDim2.new(1,0,0,30)
-loginStatus.Position = UDim2.new(0,0,1,-30)
+loginStatus.Size = UDim2.new(1, 0, 0, 22)
+loginStatus.Position = UDim2.new(0, 0, 1, -24)
 loginStatus.BackgroundTransparency = 1
 loginStatus.Text = ""
 loginStatus.Font = Enum.Font.Gotham
-loginStatus.TextSize = 13
-loginStatus.TextColor3 = Color3.fromRGB(255,80,80)
+loginStatus.TextSize = 12
+loginStatus.TextColor3 = C.OFF
+loginStatus.ZIndex = 3
 
 -- ================= HUB UI =================
 local gui = Instance.new("ScreenGui", LP.PlayerGui)
 gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local main = Instance.new("Frame", gui)
-main.Size = UDim2.fromOffset(460,480)
-main.Position = UDim2.new(0,50,0,150)
-main.BackgroundColor3 = Color3.fromRGB(0,0,0)
+main.Size = UDim2.fromOffset(480, 440)
+main.Position = UDim2.new(0, 60, 0, 120)
+main.BackgroundColor3 = C.Panel
 main.Active = true
 main.Draggable = true
 main.Visible = false
-local mainCorner = Instance.new("UICorner", main)
-mainCorner.CornerRadius = UDim.new(0,25)
+main.ZIndex = 10
+Corner(main, 16)
+Stroke(main, C.Accent, 1.2)
 
--- Título
-local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1,0,0,50)
-title.BackgroundTransparency = 1
-title.Text = "👑 MIDNIGHT HUB PREMIUM 👑"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.TextColor3 = Color3.fromRGB(85,170,255)
+-- Sombra simulada
+local shadow = Instance.new("ImageLabel", main)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -10)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://5028857084"
+shadow.ImageColor3 = Color3.fromRGB(0, 60, 160)
+shadow.ImageTransparency = 0.7
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(24, 24, 276, 276)
+shadow.ZIndex = 9
 
--- ================= TOGGLES =================
-local y = 60
-local function Toggle(text,key)
-    local b = Instance.new("TextButton", main)
-    b.Size = UDim2.new(0,340,0,36)
-    b.Position = UDim2.new(0,60,0,y)
-    b.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    local corner = Instance.new("UICorner", b)
-    corner.CornerRadius = UDim.new(0,12)
+-- ===== HEADER =====
+local header = Instance.new("Frame", main)
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = C.BG
+header.ZIndex = 11
+Corner(header, 16)
+Gradient(header, C.AccentDim, C.BG, 90)
 
-    local function refresh()
-        b.Text = text.." : "..(CFG[key] and "LIGADO" or "DESLIGADO")
-        b.TextColor3 = CFG[key] and Color3.fromRGB(85,170,255) or Color3.fromRGB(100,150,200)
+local titleLabel = Instance.new("TextLabel", header)
+titleLabel.Size = UDim2.new(1, -100, 1, 0)
+titleLabel.Position = UDim2.new(0, 16, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "👑  MIDNIGHT HUB  PREMIUM"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 16
+titleLabel.TextColor3 = C.TextMain
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.ZIndex = 12
+
+local keyInfo = Instance.new("TextLabel", header)
+keyInfo.Size = UDim2.new(0, 90, 1, 0)
+keyInfo.Position = UDim2.new(1, -96, 0, 0)
+keyInfo.BackgroundTransparency = 1
+keyInfo.Text = "PREMIUM ✓"
+keyInfo.Font = Enum.Font.GothamBold
+keyInfo.TextSize = 11
+keyInfo.TextColor3 = C.ON
+keyInfo.ZIndex = 12
+
+-- Divisor
+local divider = Instance.new("Frame", main)
+divider.Size = UDim2.new(1, -32, 0, 1)
+divider.Position = UDim2.new(0, 16, 0, 50)
+divider.BackgroundColor3 = C.Border
+divider.ZIndex = 11
+
+-- Hint minimizar
+local hintLabel = Instance.new("TextLabel", main)
+hintLabel.Size = UDim2.new(1, 0, 0, 18)
+hintLabel.Position = UDim2.new(0, 0, 1, -20)
+hintLabel.BackgroundTransparency = 1
+hintLabel.Text = "[ END ] minimizar"
+hintLabel.Font = Enum.Font.Gotham
+hintLabel.TextSize = 11
+hintLabel.TextColor3 = C.TextDim
+hintLabel.ZIndex = 11
+
+-- ===== ABAS (TABS) =====
+local tabBar = Instance.new("Frame", main)
+tabBar.Size = UDim2.new(1, -32, 0, 34)
+tabBar.Position = UDim2.new(0, 16, 0, 58)
+tabBar.BackgroundColor3 = C.Card
+tabBar.ZIndex = 11
+Corner(tabBar, 10)
+
+local tabList = Instance.new("UIListLayout", tabBar)
+tabList.FillDirection = Enum.FillDirection.Horizontal
+tabList.SortOrder = Enum.SortOrder.LayoutOrder
+tabList.Padding = UDim.new(0, 4)
+tabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+tabList.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local TABS = {"ESP", "AIM", "CONFIG"}
+local tabButtons = {}
+local tabPages = {}
+local activeTab = "ESP"
+
+-- Cria páginas
+for _, name in ipairs(TABS) do
+    local page = Instance.new("ScrollingFrame", main)
+    page.Size = UDim2.new(1, -32, 0, 310)
+    page.Position = UDim2.new(0, 16, 0, 100)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = C.Accent
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.ZIndex = 11
+    page.Visible = (name == "ESP")
+
+    local layout = Instance.new("UIListLayout", page)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+
+    tabPages[name] = page
+end
+
+-- Cria botões de aba
+for i, name in ipairs(TABS) do
+    local btn = Instance.new("TextButton", tabBar)
+    btn.Size = UDim2.new(0, 120, 0, 28)
+    btn.BackgroundColor3 = (name == "ESP") and C.AccentDim or C.Card
+    btn.Text = name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    btn.TextColor3 = (name == "ESP") and C.White or C.TextDim
+    btn.LayoutOrder = i
+    btn.ZIndex = 12
+    Corner(btn, 8)
+
+    tabButtons[name] = btn
+
+    btn.MouseButton1Click:Connect(function()
+        if activeTab == name then return end
+        -- desativa anterior
+        Tween(tabButtons[activeTab], {BackgroundColor3 = C.Card}, 0.14)
+        tabButtons[activeTab].TextColor3 = C.TextDim
+        tabPages[activeTab].Visible = false
+        -- ativa novo
+        activeTab = name
+        Tween(btn, {BackgroundColor3 = C.AccentDim}, 0.14)
+        btn.TextColor3 = C.White
+        tabPages[name].Visible = true
+    end)
+end
+
+-- ===== FUNÇÕES DE COMPONENTES =====
+
+-- Cria um toggle card
+local function CreateToggle(parent, label, icon, key, order)
+    local card = Instance.new("Frame", parent)
+    card.Size = UDim2.new(1, -4, 0, 44)
+    card.BackgroundColor3 = C.Card
+    card.LayoutOrder = order or 0
+    card.ZIndex = 12
+    Corner(card, 10)
+    Stroke(card, C.Border, 1)
+
+    local iconL = Instance.new("TextLabel", card)
+    iconL.Size = UDim2.new(0, 38, 1, 0)
+    iconL.BackgroundTransparency = 1
+    iconL.Text = icon or "•"
+    iconL.Font = Enum.Font.GothamBold
+    iconL.TextSize = 18
+    iconL.TextColor3 = C.Accent
+    iconL.ZIndex = 13
+
+    local lbl = Instance.new("TextLabel", card)
+    lbl.Size = UDim2.new(1, -100, 1, 0)
+    lbl.Position = UDim2.new(0, 38, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = label
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    lbl.TextColor3 = C.TextMain
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 13
+
+    -- Pill (toggle visual)
+    local pillBG = Instance.new("Frame", card)
+    pillBG.Size = UDim2.fromOffset(46, 24)
+    pillBG.Position = UDim2.new(1, -56, 0.5, -12)
+    pillBG.BackgroundColor3 = CFG[key] and C.ON or C.OFF
+    pillBG.ZIndex = 13
+    Corner(pillBG, 12)
+
+    local pillDot = Instance.new("Frame", pillBG)
+    pillDot.Size = UDim2.fromOffset(18, 18)
+    pillDot.Position = CFG[key] and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+    pillDot.BackgroundColor3 = C.White
+    pillDot.ZIndex = 14
+    Corner(pillDot, 9)
+
+    local function refreshToggle()
+        local on = CFG[key]
+        Tween(pillBG, {BackgroundColor3 = on and C.ON or C.OFF}, 0.15)
+        Tween(pillDot, {Position = on and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)}, 0.15)
+        lbl.TextColor3 = on and C.TextMain or C.TextDim
     end
-    refresh()
 
-    b.MouseButton1Click:Connect(function()
+    card.InputBegan:Connect(function(inp)
+        if inp.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
         if not AccessGranted then return end
         CFG[key] = not CFG[key]
-        refresh()
+        refreshToggle()
+        Tween(card, {BackgroundColor3 = Color3.fromRGB(22, 22, 34)}, 0.08)
+        task.delay(0.1, function() Tween(card, {BackgroundColor3 = C.Card}, 0.12) end)
     end)
-    y += 42
+
+    return card
 end
 
-Toggle("👁‍🗨 ESP MASTER","ESP")
-Toggle("👁‍🗨 ESP NAME","Name")
-Toggle("👁‍🗨 ESP HEALTH","Health")
-Toggle("👁‍🗨 ESP SKELETON","Skeleton")
-Toggle("👁‍🗨 ESP TRACER LINE","Tracer")
-Toggle("🎯 AIM ASSIST","Aim")
-Toggle("👁‍🗨 TEAM CHECK","TeamCheck")
+-- Cria um botão de ação
+local function CreateButton(parent, label, icon, callback, order)
+    local card = Instance.new("TextButton", parent)
+    card.Size = UDim2.new(1, -4, 0, 40)
+    card.BackgroundColor3 = C.Card
+    card.Font = Enum.Font.GothamBold
+    card.TextSize = 13
+    card.Text = (icon or "") .. "  " .. label
+    card.TextColor3 = C.Accent
+    card.LayoutOrder = order or 0
+    card.ZIndex = 12
+    Corner(card, 10)
+    Stroke(card, C.Border, 1)
 
--- ================= FOV BUTTONS =================
-local function createFOVButton(text,x)
-    local b = Instance.new("TextButton", main)
-    b.Size = UDim2.new(0,160,0,34)
-    b.Position = UDim2.new(0,x,0,y)
-    b.Text = text
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    local corner = Instance.new("UICorner", b)
-    corner.CornerRadius = UDim.new(0,12)
-    b.TextColor3 = Color3.fromRGB(85,170,255)
-    return b
+    card.MouseEnter:Connect(function()
+        Tween(card, {BackgroundColor3 = Color3.fromRGB(22, 22, 36)}, 0.12)
+        Tween(card, {TextColor3 = C.White}, 0.12)
+    end)
+    card.MouseLeave:Connect(function()
+        Tween(card, {BackgroundColor3 = C.Card}, 0.12)
+        Tween(card, {TextColor3 = C.Accent}, 0.12)
+    end)
+    card.MouseButton1Click:Connect(function()
+        if not AccessGranted then return end
+        if callback then callback() end
+        Tween(card, {BackgroundColor3 = C.AccentDim}, 0.08)
+        task.delay(0.12, function() Tween(card, {BackgroundColor3 = C.Card}, 0.14) end)
+    end)
+    return card
 end
 
-local fovP = createFOVButton("FOV +",60)
-fovP.MouseButton1Click:Connect(function()
-    if not AccessGranted then return end
-    CFG.FOV = math.clamp(CFG.FOV + 10,50,400)
-end)
+-- Cria separador com título de seção
+local function CreateSection(parent, label, order)
+    local sec = Instance.new("Frame", parent)
+    sec.Size = UDim2.new(1, -4, 0, 22)
+    sec.BackgroundTransparency = 1
+    sec.LayoutOrder = order or 0
+    sec.ZIndex = 12
 
-local fovM = createFOVButton("FOV -",240)
-fovM.MouseButton1Click:Connect(function()
-    if not AccessGranted then return end
-    CFG.FOV = math.clamp(CFG.FOV - 10,50,400)
-end)
+    local secLbl = Instance.new("TextLabel", sec)
+    secLbl.Size = UDim2.new(1, 0, 1, 0)
+    secLbl.BackgroundTransparency = 1
+    secLbl.Text = "  — " .. label
+    secLbl.Font = Enum.Font.GothamBold
+    secLbl.TextSize = 11
+    secLbl.TextColor3 = C.TextDim
+    secLbl.TextXAlignment = Enum.TextXAlignment.Left
+    secLbl.ZIndex = 13
 
--- ================= AIM SELECTOR =================
-local aimSelector = Instance.new("TextButton", main)
-aimSelector.Size = UDim2.new(0,340,0,36)
-aimSelector.Position = UDim2.new(0,60,0,y+50)
-aimSelector.Text = "Aim System: "..CFG.AimKey
-aimSelector.Font = Enum.Font.GothamBold
-aimSelector.TextSize = 14
-aimSelector.BackgroundColor3 = Color3.fromRGB(20,20,20)
-aimSelector.TextColor3 = Color3.fromRGB(85,170,255)
-local corner = Instance.new("UICorner", aimSelector)
-corner.CornerRadius = UDim.new(0,12)
-aimSelector.MouseButton1Click:Connect(function()
-    if not AccessGranted then return end
-    CFG.AimKey = (CFG.AimKey=="M1") and "M2" or "M1"
-    aimSelector.Text = "Aim System: "..CFG.AimKey
-end)
+    return sec
+end
 
--- ================= MINIMIZE PANEL =================
+-- Cria slider de valor (FOV)
+local function CreateSlider(parent, label, icon, cfgKey, minVal, maxVal, order)
+    local card = Instance.new("Frame", parent)
+    card.Size = UDim2.new(1, -4, 0, 56)
+    card.BackgroundColor3 = C.Card
+    card.LayoutOrder = order or 0
+    card.ZIndex = 12
+    Corner(card, 10)
+    Stroke(card, C.Border, 1)
+
+    local iconL = Instance.new("TextLabel", card)
+    iconL.Size = UDim2.new(0, 38, 0, 24)
+    iconL.Position = UDim2.new(0, 0, 0, 4)
+    iconL.BackgroundTransparency = 1
+    iconL.Text = icon or "•"
+    iconL.Font = Enum.Font.GothamBold
+    iconL.TextSize = 18
+    iconL.TextColor3 = C.Accent
+    iconL.ZIndex = 13
+
+    local lbl = Instance.new("TextLabel", card)
+    lbl.Size = UDim2.new(0, 200, 0, 24)
+    lbl.Position = UDim2.new(0, 38, 0, 4)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    lbl.TextColor3 = C.TextMain
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 13
+
+    local valLbl = Instance.new("TextLabel", card)
+    valLbl.Size = UDim2.new(0, 50, 0, 24)
+    valLbl.Position = UDim2.new(1, -54, 0, 4)
+    valLbl.BackgroundTransparency = 1
+    valLbl.Font = Enum.Font.GothamBold
+    valLbl.TextSize = 13
+    valLbl.TextColor3 = C.Accent
+    valLbl.ZIndex = 13
+
+    local track = Instance.new("Frame", card)
+    track.Size = UDim2.new(1, -20, 0, 6)
+    track.Position = UDim2.new(0, 10, 1, -16)
+    track.BackgroundColor3 = C.Border
+    track.ZIndex = 13
+    Corner(track, 3)
+
+    local fill = Instance.new("Frame", track)
+    fill.BackgroundColor3 = C.Accent
+    fill.Size = UDim2.new(0, 0, 1, 0)
+    fill.ZIndex = 14
+    Corner(fill, 3)
+
+    local knob = Instance.new("Frame", track)
+    knob.Size = UDim2.fromOffset(12, 12)
+    knob.AnchorPoint = Vector2.new(0.5, 0.5)
+    knob.BackgroundColor3 = C.White
+    knob.ZIndex = 15
+    Corner(knob, 6)
+
+    local function updateVisual()
+        local pct = (CFG[cfgKey] - minVal) / (maxVal - minVal)
+        pct = math.clamp(pct, 0, 1)
+        fill.Size = UDim2.new(pct, 0, 1, 0)
+        knob.Position = UDim2.new(pct, 0, 0.5, 0)
+        lbl.Text = label
+        valLbl.Text = tostring(CFG[cfgKey])
+    end
+    updateVisual()
+
+    local dragging = false
+    knob.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
+    track.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
+    UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    UIS.InputChanged:Connect(function(i)
+        if not dragging then return end
+        if not AccessGranted then return end
+        if i.UserInputType == Enum.UserInputType.MouseMovement then
+            local tAbs = track.AbsolutePosition
+            local tSz = track.AbsoluteSize
+            local rel = math.clamp((i.Position.X - tAbs.X) / tSz.X, 0, 1)
+            CFG[cfgKey] = math.floor(minVal + (maxVal - minVal) * rel)
+            updateVisual()
+        end
+    end)
+
+    return card
+end
+
+-- Cria seletor de valor (AimKey)
+local function CreateSelector(parent, label, icon, options, getVal, setVal, order)
+    local card = Instance.new("Frame", parent)
+    card.Size = UDim2.new(1, -4, 0, 44)
+    card.BackgroundColor3 = C.Card
+    card.LayoutOrder = order or 0
+    card.ZIndex = 12
+    Corner(card, 10)
+    Stroke(card, C.Border, 1)
+
+    local iconL = Instance.new("TextLabel", card)
+    iconL.Size = UDim2.new(0, 38, 1, 0)
+    iconL.BackgroundTransparency = 1
+    iconL.Text = icon or "•"
+    iconL.Font = Enum.Font.GothamBold
+    iconL.TextSize = 18
+    iconL.TextColor3 = C.Accent
+    iconL.ZIndex = 13
+
+    local lbl = Instance.new("TextLabel", card)
+    lbl.Size = UDim2.new(1, -140, 1, 0)
+    lbl.Position = UDim2.new(0, 38, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = label
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 13
+    lbl.TextColor3 = C.TextMain
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 13
+
+    for i, opt in ipairs(options) do
+        local btn = Instance.new("TextButton", card)
+        btn.Size = UDim2.fromOffset(52, 26)
+        btn.Position = UDim2.new(1, -10 - (56 * (#options - i + 1)), 0.5, -13)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 12
+        btn.Text = opt
+        btn.ZIndex = 13
+        Corner(btn, 7)
+
+        local function refreshSel()
+            local cur = getVal()
+            btn.BackgroundColor3 = (cur == opt) and C.AccentDim or C.Border
+            btn.TextColor3 = (cur == opt) and C.White or C.TextDim
+        end
+        refreshSel()
+
+        btn.MouseButton1Click:Connect(function()
+            if not AccessGranted then return end
+            setVal(opt)
+            -- refresh all
+            for _, b in ipairs(card:GetChildren()) do
+                if b:IsA("TextButton") then
+                    b.BackgroundColor3 = (getVal() == b.Text) and C.AccentDim or C.Border
+                    b.TextColor3 = (getVal() == b.Text) and C.White or C.TextDim
+                end
+            end
+        end)
+    end
+
+    return card
+end
+
+-- ===== PÁGINA ESP =====
+local espPage = tabPages["ESP"]
+
+CreateSection(espPage, "VISIBILIDADE", 1)
+CreateToggle(espPage, "ESP Master",     "👁", "ESP",       2)
+CreateToggle(espPage, "Nome + Distância","🏷", "Name",     3)
+CreateToggle(espPage, "Barra de Vida",  "❤", "Health",    4)
+
+CreateSection(espPage, "DESENHO", 5)
+CreateToggle(espPage, "Esqueleto",      "🦴", "Skeleton",  6)
+CreateToggle(espPage, "Tracer Line",    "📐", "Tracer",    7)
+
+-- ===== PÁGINA AIM =====
+local aimPage = tabPages["AIM"]
+
+CreateSection(aimPage, "AIM ASSIST", 1)
+CreateToggle(aimPage, "Ativar Aim Assist","🎯", "Aim", 2)
+CreateToggle(aimPage, "Mostrar Círculo FOV","⭕", "ShowFOV", 3)
+
+CreateSection(aimPage, "CONFIGURAÇÃO", 4)
+CreateSlider(aimPage, "FOV Radius", "🔭", "FOV", 50, 400, 5)
+
+CreateSection(aimPage, "BOTÃO DE DISPARO", 6)
+CreateSelector(aimPage, "Tecla do Aim", "🖱", {"M1","M2"},
+    function() return CFG.AimKey end,
+    function(v) CFG.AimKey = v end,
+7)
+
+-- ===== PÁGINA CONFIG =====
+local cfgPage = tabPages["CONFIG"]
+
+CreateSection(cfgPage, "EQUIPE", 1)
+CreateToggle(cfgPage, "Team Check (não mirar aliados)", "🛡", "TeamCheck", 2)
+
+CreateSection(cfgPage, "INFORMAÇÕES", 3)
+
+-- Info card
+local infoCard = Instance.new("Frame", cfgPage)
+infoCard.Size = UDim2.new(1, -4, 0, 80)
+infoCard.BackgroundColor3 = C.Card
+infoCard.LayoutOrder = 4
+infoCard.ZIndex = 12
+Corner(infoCard, 10)
+Stroke(infoCard, C.Border, 1)
+
+local infoText = Instance.new("TextLabel", infoCard)
+infoText.Size = UDim2.new(1, -16, 1, 0)
+infoText.Position = UDim2.new(0, 8, 0, 0)
+infoText.BackgroundTransparency = 1
+infoText.Text = "Midnight Hub Premium v2\nby Th.exe\n[END] mostrar / ocultar painel"
+infoText.Font = Enum.Font.Gotham
+infoText.TextSize = 12
+infoText.TextColor3 = C.TextDim
+infoText.TextXAlignment = Enum.TextXAlignment.Left
+infoText.TextYAlignment = Enum.TextYAlignment.Center
+infoText.ZIndex = 13
+
+-- ================= MINIMIZE (END) =================
 UIS.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.Insert then
-        main.Visible = not main.Visible
+    if input.KeyCode == Enum.KeyCode.End then
+        local visible = not main.Visible
+        main.Visible = visible
+        if visible then
+            main.Position = UDim2.new(main.Position.X.Scale, main.Position.X.Offset, main.Position.Y.Scale, main.Position.Y.Offset)
+            main.BackgroundTransparency = 1
+            Tween(main, {BackgroundTransparency = 0}, 0.18)
+        end
     end
 end)
 
@@ -335,15 +795,20 @@ end)
 loginBtn.MouseButton1Click:Connect(function()
     if loginBox.Text == SECRET_KEY then
         AccessGranted = true
-        loginStatus.TextColor3 = Color3.fromRGB(120,255,120)
-        loginStatus.Text = "✔ Key correta! Abrindo hub..."
-        task.wait(0.3)
+        loginStatus.TextColor3 = C.ON
+        loginStatus.Text = "✔  Key correta! Abrindo hub..."
+        Tween(loginFrame, {BackgroundTransparency = 1}, 0.4)
+        task.wait(0.35)
+        blur:Destroy()
         loginGui:Destroy()
         main.Visible = true
     else
-        loginStatus.TextColor3 = Color3.fromRGB(255,80,80)
-        loginStatus.Text = "✖ Key inválida"
+        loginStatus.TextColor3 = C.OFF
+        loginStatus.Text = "✖  Key inválida"
+        Tween(loginFrame, {Position = UDim2.new(0.5, -8, 0.5, 0)}, 0.05)
+        task.delay(0.05, function() Tween(loginFrame, {Position = UDim2.new(0.5, 8, 0.5, 0)}, 0.05) end)
+        task.delay(0.10, function() Tween(loginFrame, {Position = UDim2.new(0.5, 0, 0.5, 0)}, 0.08) end)
     end
 end)
 
-print("✅ MIDNIGHT HUB ATIVO | UI PRETO + AZUL | ESP/AIM FUNCIONANDO")
+print("✅ MIDNIGHT HUB v2 ATIVO | ABAS ESP/AIM/CONFIG | [END] minimizar")
