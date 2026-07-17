@@ -496,11 +496,36 @@ local function newLine() local l = Drawing.new("Line"); l.Thickness = 1.8; l.Col
 local function newText() local t = Drawing.new("Text"); t.Size = 14; t.Center = true; t.Outline = true; t.OutlineColor = C.Black; t.Font = 2; t.Color = DRAW; t.Transparency = 1; t.Visible = false; return t end
 local function newBox() local b = Drawing.new("Square"); b.Thickness = 1.6; b.Filled = false; b.Color = DRAW; b.Transparency = 1; b.Visible = false; return b end
 
-local fovCircle
-if hasDrawing then
-    fovCircle = Drawing.new("Circle"); fovCircle.Thickness = 2; fovCircle.Filled = false
-    fovCircle.NumSides = 64; fovCircle.Color = DRAW; fovCircle.Transparency = 1; fovCircle.Visible = false
-end
+-- FOV circle em GUI (funciona em qualquer executor, independe de Drawing)
+local fovGui = Instance.new("ScreenGui")
+fovGui.Name = "MidnightFOV_v5"
+fovGui.ResetOnSpawn = false
+fovGui.DisplayOrder = 30
+fovGui.IgnoreGuiInset = true
+fovGui.Parent = LP.PlayerGui
+
+local fovRing = Instance.new("Frame", fovGui)
+fovRing.AnchorPoint = Vector2.new(0.5, 0.5)
+fovRing.BackgroundTransparency = 1
+fovRing.BorderSizePixel = 0
+fovRing.Visible = false
+local fovR = Instance.new("UICorner", fovRing); fovR.CornerRadius = UDim.new(1, 0)
+local fovStroke = Instance.new("UIStroke", fovRing)
+fovStroke.Color = C.Accent
+fovStroke.Thickness = 2
+fovStroke.Transparency = 0.1
+
+RunService.RenderStepped:Connect(function()
+    if AccessGranted and CFG.ShowFOV then
+        local m = UIS:GetMouseLocation()
+        local dia = CFG.FOV * 2
+        fovRing.Size = UDim2.fromOffset(dia, dia)
+        fovRing.Position = UDim2.fromOffset(m.X, m.Y)
+        fovRing.Visible = true
+    else
+        fovRing.Visible = false
+    end
+end)
 
 local R15Bones = {
     {"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
@@ -546,12 +571,6 @@ end
 -- ESP loop
 if hasDrawing then
     RunService.RenderStepped:Connect(function()
-        -- FOV
-        if AccessGranted and CFG.Aim and CFG.ShowFOV then
-            fovCircle.Radius = CFG.FOV; fovCircle.Position = UIS:GetMouseLocation(); fovCircle.Visible = true
-        else
-            fovCircle.Visible = false
-        end
         -- ESP
         if not AccessGranted or not CFG.ESP then
             for _, d in pairs(cache) do hideAll(d) end; return
