@@ -12,6 +12,23 @@ local Tween        = game:GetService("TweenService")
 local Camera       = workspace.CurrentCamera
 local LP           = Players.LocalPlayer
 
+-- Camera se atualiza sozinha (evita ESP sumir ao morrer/trocar câmera)
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    if workspace.CurrentCamera then Camera = workspace.CurrentCamera end
+end)
+
+-- Container das GUIs que SOBREVIVE ao respawn (gethui > CoreGui > PlayerGui)
+local GUIPARENT
+do
+    local ok, h = pcall(function() return gethui and gethui() end)
+    if ok and h then
+        GUIPARENT = h
+    else
+        local ok2, cg = pcall(function() return game:GetService("CoreGui") end)
+        GUIPARENT = (ok2 and cg) or LP:WaitForChild("PlayerGui")
+    end
+end
+
 -- ===================== CONFIG =====================
 local CFG = {
     -- Aiming
@@ -89,10 +106,17 @@ local function drag(frame, handle)
     end)
 end
 
--- limpa execuções antigas
+-- limpa execuções antigas (nos dois lugares possíveis)
 pcall(function()
-    for _, g in ipairs(LP.PlayerGui:GetChildren()) do
-        if g.Name == "MidnightHub_v5" or g.Name == "MidnightLogin_v5" then g:Destroy() end
+    local names = { MidnightHub_v5 = true, MidnightLogin_v5 = true, MidnightFOV_v5 = true, MidnightESP_v5 = true, MidnightESP_Holder = true }
+    local roots = { GUIPARENT }
+    pcall(function() table.insert(roots, LP:FindFirstChild("PlayerGui")) end)
+    for _, root in ipairs(roots) do
+        if root then
+            for _, g in ipairs(root:GetChildren()) do
+                if names[g.Name] then g:Destroy() end
+            end
+        end
     end
 end)
 
@@ -106,7 +130,7 @@ loginGui.Name = "MidnightLogin_v5"
 loginGui.ResetOnSpawn = false
 loginGui.DisplayOrder = 50
 loginGui.IgnoreGuiInset = true
-loginGui.Parent = LP:WaitForChild("PlayerGui")
+loginGui.Parent = GUIPARENT
 
 local blur = Instance.new("BlurEffect"); blur.Size = 16; blur.Parent = Camera
 
@@ -188,7 +212,7 @@ gui.Name = "MidnightHub_v5"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 40
 gui.IgnoreGuiInset = true
-gui.Parent = LP.PlayerGui
+gui.Parent = GUIPARENT
 
 main = Instance.new("Frame", gui)
 main.Size = UDim2.fromOffset(540, 440)
@@ -494,7 +518,7 @@ fovGui.Name = "MidnightFOV_v5"
 fovGui.ResetOnSpawn = false
 fovGui.DisplayOrder = 30
 fovGui.IgnoreGuiInset = true
-fovGui.Parent = LP.PlayerGui
+fovGui.Parent = GUIPARENT
 
 local fovRing = Instance.new("Frame", fovGui)
 fovRing.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -543,12 +567,13 @@ espLines.Name = "MidnightESP_v5"
 espLines.ResetOnSpawn = false
 espLines.DisplayOrder = 20
 espLines.IgnoreGuiInset = false
-espLines.Parent = LP.PlayerGui
+espLines.Parent = GUIPARENT
 
--- pasta p/ Highlights e Billboards
-local espHolder = Instance.new("Folder")
+-- Highlights e Billboards vão num ScreenGui (ResetOnSpawn=false) p/ NÃO sumir ao morrer
+local espHolder = Instance.new("ScreenGui")
 espHolder.Name = "MidnightESP_Holder"
-espHolder.Parent = LP.PlayerGui
+espHolder.ResetOnSpawn = false
+espHolder.Parent = GUIPARENT
 
 local function makeLine()
     local f = Instance.new("Frame", espLines)
@@ -632,6 +657,8 @@ RunService.RenderStepped:Connect(function()
         for _, d in pairs(cache) do hideESP(d) end
         return
     end
+    if not Camera then Camera = workspace.CurrentCamera end
+    if not Camera then return end
     local vp = Camera.ViewportSize
     for plr, d in pairs(cache) do
         hideESP(d)
@@ -718,6 +745,8 @@ end
 -- =====================================================================
 RunService.RenderStepped:Connect(function()
     if not AccessGranted or not CFG.Aim then return end
+    if not Camera then Camera = workspace.CurrentCamera end
+    if not Camera then return end
     local mb = (CFG.AimKey == "M1") and Enum.UserInputType.MouseButton1 or Enum.UserInputType.MouseButton2
     if not UIS:IsMouseButtonPressed(mb) then return end
 
