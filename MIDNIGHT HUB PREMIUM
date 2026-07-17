@@ -485,16 +485,8 @@ UIS.InputBegan:Connect(function(input, gp)
 end)
 
 -- =====================================================================
--- DRAWING / ESP
+-- ESP NATIVO (Highlight + BillboardGui + linhas GUI) — funciona em QUALQUER executor
 -- =====================================================================
-local hasDrawing = pcall(function() local t = Drawing.new("Line"); t:Remove() end)
-if not hasDrawing then
-    warn("[Midnight] Seu executor NÃO suporta Drawing — ESP indisponível (UI funciona normal).")
-end
-
-local function newLine() local l = Drawing.new("Line"); l.Thickness = 1.8; l.Color = DRAW; l.Transparency = 1; l.Visible = false; return l end
-local function newText() local t = Drawing.new("Text"); t.Size = 14; t.Center = true; t.Outline = true; t.OutlineColor = C.Black; t.Font = 2; t.Color = DRAW; t.Transparency = 1; t.Visible = false; return t end
-local function newBox() local b = Drawing.new("Square"); b.Thickness = 1.6; b.Filled = false; b.Color = DRAW; b.Transparency = 1; b.Visible = false; return b end
 
 -- FOV circle em GUI (funciona em qualquer executor, independe de Drawing)
 local fovGui = Instance.new("ScreenGui")
@@ -545,97 +537,165 @@ local function healthColor(p)
     if p > 0.5 then return Color3.new((1 - p) * 2, 1, 0) else return Color3.new(1, p * 2, 0) end
 end
 
+-- ScreenGui p/ linhas (tracer + esqueleto) — alinha com WorldToViewportPoint
+local espLines = Instance.new("ScreenGui")
+espLines.Name = "MidnightESP_v5"
+espLines.ResetOnSpawn = false
+espLines.DisplayOrder = 20
+espLines.IgnoreGuiInset = false
+espLines.Parent = LP.PlayerGui
+
+-- pasta p/ Highlights e Billboards
+local espHolder = Instance.new("Folder")
+espHolder.Name = "MidnightESP_Holder"
+espHolder.Parent = LP.PlayerGui
+
+local function makeLine()
+    local f = Instance.new("Frame", espLines)
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.BackgroundColor3 = DRAW
+    f.BorderSizePixel = 0
+    f.Visible = false
+    return f
+end
+local function setLine(f, a, b, th)
+    local dx, dy = b.X - a.X, b.Y - a.Y
+    local len = math.sqrt(dx * dx + dy * dy)
+    f.Size = UDim2.fromOffset(len, th or 2)
+    f.Position = UDim2.fromOffset((a.X + b.X) / 2, (a.Y + b.Y) / 2)
+    f.Rotation = math.deg(math.atan2(dy, dx))
+end
+
 local cache = {}
 local function addESP(plr)
-    if plr == LP or not hasDrawing then return end
-    local d = { Name = newText(), Health = newText(), Box = newBox(), Tracer = newLine(), Bones = {} }
-    for i = 1, MAXB do d.Bones[i] = newLine() end
-    cache[plr] = d
+    if plr == LP then return end
+
+    -- Highlight (box/chams, atravessa parede)
+    local hl = Instance.new("Highlight")
+    hl.FillColor = DRAW
+    hl.FillTransparency = 0.55
+    hl.OutlineColor = C.White
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Enabled = false
+    hl.Parent = espHolder
+
+    -- BillboardGui (nome / distância / vida)
+    local bb = Instance.new("BillboardGui")
+    bb.Size = UDim2.fromOffset(220, 42)
+    bb.StudsOffset = Vector3.new(0, 2.6, 0)
+    bb.AlwaysOnTop = true
+    bb.Enabled = false
+    bb.Parent = espHolder
+    local vlist = Instance.new("UIListLayout", bb)
+    vlist.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    vlist.SortOrder = Enum.SortOrder.LayoutOrder
+    local nameL = Instance.new("TextLabel", bb)
+    nameL.Size = UDim2.new(1, 0, 0, 18); nameL.LayoutOrder = 1
+    nameL.BackgroundTransparency = 1; nameL.Font = Enum.Font.GothamBold; nameL.TextSize = 14
+    nameL.TextColor3 = C.White; nameL.Text = ""
+    local ns = Instance.new("UIStroke", nameL); ns.Thickness = 1.6; ns.Color = C.Black
+    local hpL = Instance.new("TextLabel", bb)
+    hpL.Size = UDim2.new(1, 0, 0, 16); hpL.LayoutOrder = 2
+    hpL.BackgroundTransparency = 1; hpL.Font = Enum.Font.GothamBold; hpL.TextSize = 12
+    hpL.TextColor3 = C.Green; hpL.Text = ""
+    local hs = Instance.new("UIStroke", hpL); hs.Thickness = 1.6; hs.Color = C.Black
+
+    -- linhas
+    local tracer = makeLine()
+    local bones = {}
+    for i = 1, MAXB do bones[i] = makeLine() end
+
+    cache[plr] = { hl = hl, bb = bb, nameL = nameL, hpL = hpL, tracer = tracer, bones = bones }
 end
 local function removeESP(plr)
     local d = cache[plr]; if not d then return end
-    pcall(function() d.Name:Remove() end); pcall(function() d.Health:Remove() end)
-    pcall(function() d.Box:Remove() end); pcall(function() d.Tracer:Remove() end)
-    for _, l in pairs(d.Bones) do pcall(function() l:Remove() end) end
+    pcall(function() d.hl:Destroy() end)
+    pcall(function() d.bb:Destroy() end)
+    pcall(function() d.tracer:Destroy() end)
+    for _, l in pairs(d.bones) do pcall(function() l:Destroy() end) end
     cache[plr] = nil
 end
 for _, p in ipairs(Players:GetPlayers()) do addESP(p) end
 Players.PlayerAdded:Connect(addESP)
 Players.PlayerRemoving:Connect(removeESP)
 
-local function hideAll(d)
-    d.Name.Visible = false; d.Health.Visible = false; d.Box.Visible = false; d.Tracer.Visible = false
-    for _, l in pairs(d.Bones) do l.Visible = false end
+local function hideESP(d)
+    d.hl.Enabled = false
+    d.bb.Enabled = false
+    d.tracer.Visible = false
+    for _, l in pairs(d.bones) do l.Visible = false end
 end
 
--- ESP loop
-if hasDrawing then
-    RunService.RenderStepped:Connect(function()
-        -- ESP
-        if not AccessGranted or not CFG.ESP then
-            for _, d in pairs(cache) do hideAll(d) end; return
+RunService.RenderStepped:Connect(function()
+    if not AccessGranted or not CFG.ESP then
+        for _, d in pairs(cache) do hideESP(d) end
+        return
+    end
+    local vp = Camera.ViewportSize
+    for plr, d in pairs(cache) do
+        hideESP(d)
+        local char = plr.Character; if not char then continue end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
+        local head = char:FindFirstChild("Head")
+        if not hum or not hrp or hum.Health <= 0 then continue end
+        if CFG.TeamCheck and plr.Team and LP.Team and plr.Team == LP.Team then continue end
+
+        -- Box (Highlight / chams)
+        if CFG.Box then
+            d.hl.Adornee = char
+            d.hl.Enabled = true
         end
-        local vp = Camera.ViewportSize
-        for plr, d in pairs(cache) do
-            hideAll(d)
-            local char = plr.Character; if not char then continue end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso")
-            if not hum or not hrp or hum.Health <= 0 then continue end
-            if CFG.TeamCheck and plr.Team and LP.Team and plr.Team == LP.Team then continue end
 
-            local rp, on = Camera:WorldToViewportPoint(hrp.Position)
-            if not on or rp.Z <= 0 then continue end
-
-            local head = char:FindFirstChild("Head")
-            local hp = head and select(1, Camera:WorldToViewportPoint(head.Position)) or rp
-
+        -- Texto (BillboardGui)
+        if (CFG.Name or CFG.Health) and head then
+            d.bb.Adornee = head
+            d.bb.Enabled = true
             if CFG.Name then
-                local txt = plr.Name
+                local t = plr.Name
                 if CFG.Distance then
-                    txt = txt .. "  [" .. math.floor((Camera.CFrame.Position - hrp.Position).Magnitude) .. "m]"
+                    t = t .. "  [" .. math.floor((Camera.CFrame.Position - hrp.Position).Magnitude) .. "m]"
                 end
-                d.Name.Text = txt
-                d.Name.Position = Vector2.new(rp.X, (hp.Y or rp.Y) - 30)
-                d.Name.Visible = true
+                d.nameL.Text = t
+                d.nameL.Visible = true
+            else
+                d.nameL.Visible = false
             end
             if CFG.Health then
                 local pct = hum.Health / math.max(hum.MaxHealth, 1)
-                d.Health.Color = healthColor(pct)
-                d.Health.Text = "HP " .. math.floor(hum.Health)
-                d.Health.Position = Vector2.new(rp.X, (hp.Y or rp.Y) - 15)
-                d.Health.Visible = true
+                d.hpL.Text = "HP " .. math.floor(hum.Health)
+                d.hpL.TextColor3 = healthColor(pct)
+                d.hpL.Visible = true
+            else
+                d.hpL.Visible = false
             end
-            if CFG.Box and head then
-                local h = math.abs(hp.Y - rp.Y) * 2.4
-                local w = h * 0.55
-                d.Box.Size = Vector2.new(w, h)
-                d.Box.Position = Vector2.new(hp.X - w / 2, hp.Y - h * 0.12)
-                d.Box.Visible = true
+        end
+
+        -- posição 2D p/ linhas
+        local rp, on = Camera:WorldToViewportPoint(hrp.Position)
+        if on and rp.Z > 0 then
+            if CFG.Tracer then
+                setLine(d.tracer, Vector2.new(vp.X / 2, vp.Y), Vector2.new(rp.X, rp.Y), 2)
+                d.tracer.Visible = true
             end
             if CFG.Skeleton then
-                local bones = char:FindFirstChild("UpperTorso") and R15Bones or R6Bones
-                for i, bn in ipairs(bones) do
+                local bset = char:FindFirstChild("UpperTorso") and R15Bones or R6Bones
+                for i, bn in ipairs(bset) do
                     local a = char:FindFirstChild(bn[1]); local b = char:FindFirstChild(bn[2])
                     if a and b then
                         local pa, va = Camera:WorldToViewportPoint(a.Position)
                         local pb, vb = Camera:WorldToViewportPoint(b.Position)
                         if va and vb and pa.Z > 0 and pb.Z > 0 then
-                            d.Bones[i].From = Vector2.new(pa.X, pa.Y)
-                            d.Bones[i].To = Vector2.new(pb.X, pb.Y)
-                            d.Bones[i].Visible = true
+                            setLine(d.bones[i], Vector2.new(pa.X, pa.Y), Vector2.new(pb.X, pb.Y), 2)
+                            d.bones[i].Visible = true
                         end
                     end
                 end
             end
-            if CFG.Tracer then
-                d.Tracer.From = Vector2.new(vp.X / 2, vp.Y)
-                d.Tracer.To = Vector2.new(rp.X, rp.Y)
-                d.Tracer.Visible = true
-            end
         end
-    end)
-end
+    end
+end)
 
 -- =====================================================================
 -- WALL CHECK (raycast)
@@ -691,5 +751,5 @@ end)
 print("=====================================")
 print("  MIDNIGHT HUB v5  |  by Th.exe")
 print("  Chave: MID-8271-XJ92-00PQ-9281")
-print("  Drawing/ESP suportado: " .. tostring(hasDrawing))
+print("  ESP nativo: Highlight + Billboard + Linhas")
 print("=====================================")
