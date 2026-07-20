@@ -42,10 +42,6 @@ local CFG = {
     Wallbang      = true,     -- acerta atravessando parede (tiro sempre conta)
     MaxOriginDist = 80,       -- raio do tiro sai a até X studs de você
     MinRayLen     = 20,       -- ignora raios curtos (checagens)
-    -- Aim Lock (trava de câmera — estilo Midnight antigo)
-    AimLock       = false,
-    AimLockHold   = true,     -- só trava enquanto segura o botão direito
-    AimLockSmooth = 0.5,      -- 0.05 = bem suave, 1 = trava instantânea
     -- Visuals (ESP)
     ESP        = true,
     Box        = true,
@@ -85,12 +81,9 @@ local DRAW = Color3.fromRGB(255, 105, 180)
 
 -- ===================== CUSTOMIZAÇÃO (registries + forward) =====================
 local uiCorners, radioRefreshers, sliderFills = {}, {}, {}
-local sliderUpdaters, dropdownRefreshers, searchItems = {}, {}, {}
 local setAccent, setSharp, setBgImage  -- forward
 local setBgColor, setTextColor, setEspColor, setFovColor, applyStyle  -- forward (cores separadas + estilos)
 local bgImage  -- forward
-local requestSave, notify  -- forward (auto-save + notificações)
-local buildTab = "Silent"  -- qual aba está sendo montada (p/ a busca saber onde cada opção está)
 local function lighten(c, f) f = f or 0.35; return Color3.new(c.R + (1 - c.R) * f, c.G + (1 - c.G) * f, c.B + (1 - c.B) * f) end
 
 -- ===================== HELPERS =====================
@@ -107,7 +100,7 @@ local function padall(o, l, r, t, b)
 end
 local function tw(o, props, t, style)
     if not o or not o.Parent then return end
-    Tween:Create(o, TweenInfo.new(t or 0.15, style or Enum.EasingStyle.Quart, Enum.EasingDirection.Out), props):Play()
+    Tween:Create(o, TweenInfo.new(t or 0.15, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
 end
 local function drag(frame, handle)
     handle = handle or frame
@@ -238,30 +231,10 @@ local titleCap = Instance.new("Frame", title)
 titleCap.Size = UDim2.new(1, 0, 0, 12); titleCap.Position = UDim2.new(0, 0, 1, -12)
 titleCap.BackgroundColor3 = C.Bar; titleCap.BorderSizePixel = 0
 local titleTxt = Instance.new("TextLabel", title)
-titleTxt.Size = UDim2.new(1, -210, 1, 0); titleTxt.Position = UDim2.new(0, 14, 0, 0)
+titleTxt.Size = UDim2.new(1, -24, 1, 0); titleTxt.Position = UDim2.new(0, 14, 0, 0)
 titleTxt.BackgroundTransparency = 1; titleTxt.Text = "🌙 Midnight Silent Mode  •  by Th.exe"
 titleTxt.Font = Enum.Font.GothamBold; titleTxt.TextSize = 13; titleTxt.TextColor3 = C.Text
 titleTxt.TextXAlignment = Enum.TextXAlignment.Left
-titleTxt.TextTruncate = Enum.TextTruncate.AtEnd
-
--- barra de busca (filtra as opções)
-local searchBox = Instance.new("TextBox", title)
-searchBox.Size = UDim2.fromOffset(150, 22); searchBox.Position = UDim2.new(1, -186, 0.5, -11)
-searchBox.BackgroundColor3 = C.Card; searchBox.BorderSizePixel = 0; searchBox.Text = ""
-searchBox.PlaceholderText = "🔎 Buscar opção..."; searchBox.PlaceholderColor3 = C.Dim
-searchBox.ClearTextOnFocus = false; searchBox.Font = Enum.Font.Gotham
-searchBox.TextSize = 12; searchBox.TextColor3 = C.Text; searchBox.ZIndex = 3
-corner(searchBox, 6); stroke(searchBox, C.Line, 1, 0.3); padall(searchBox, 8, 8, 0, 0)
-
--- botão minimizar
-local minBtn = Instance.new("TextButton", title)
-minBtn.Size = UDim2.fromOffset(24, 22); minBtn.Position = UDim2.new(1, -30, 0.5, -11)
-minBtn.AutoButtonColor = false; minBtn.BackgroundColor3 = C.Card; minBtn.BorderSizePixel = 0
-minBtn.Text = "—"; minBtn.Font = Enum.Font.GothamBold; minBtn.TextSize = 16; minBtn.TextColor3 = C.Text
-minBtn.ZIndex = 3; corner(minBtn, 6); stroke(minBtn, C.Line, 1, 0.3)
-minBtn.MouseEnter:Connect(function() tw(minBtn, {BackgroundColor3 = C.Hover}, 0.1) end)
-minBtn.MouseLeave:Connect(function() tw(minBtn, {BackgroundColor3 = C.Card}, 0.1) end)
-
 drag(main, title)
 
 local strip = Instance.new("Frame", main)
@@ -330,66 +303,6 @@ foot.Size = UDim2.new(1, 0, 0, 16); foot.Position = UDim2.new(0, 0, 1, -18)
 foot.BackgroundTransparency = 1; foot.Text = "[END] esconder painel"
 foot.Font = Enum.Font.Gotham; foot.TextSize = 10; foot.TextColor3 = C.Dim
 
--- ===================== MINIMIZAR =====================
-local FULL_SIZE = UDim2.fromOffset(540, 440)
-local minimized = false
-local function setMinimized(v)
-    minimized = v
-    if v then
-        strip.Visible = false; stripLine.Visible = false; body.Visible = false; foot.Visible = false
-        tw(main, { Size = UDim2.fromOffset(540, 34) }, 0.22, Enum.EasingStyle.Quart)
-        minBtn.Text = "＋"
-    else
-        tw(main, { Size = FULL_SIZE }, 0.22, Enum.EasingStyle.Quart)
-        task.delay(0.12, function()
-            strip.Visible = true; stripLine.Visible = true; body.Visible = true; foot.Visible = true
-        end)
-        minBtn.Text = "—"
-    end
-end
-minBtn.MouseButton1Click:Connect(function() setMinimized(not minimized) end)
-
--- ===================== NOTIFICAÇÕES (toast) =====================
-local toastCount = 0
-notify = function(text, kind)
-    local col = (kind == "err" and C.Red) or (kind == "ok" and C.Green) or C.Accent
-    local t = Instance.new("Frame", gui)
-    t.Size = UDim2.fromOffset(238, 42); t.AnchorPoint = Vector2.new(0, 0)
-    t.Position = UDim2.new(1, 250, 1, -70); t.BackgroundColor3 = C.Bar; t.BorderSizePixel = 0
-    corner(t, 8); stroke(t, col, 1.5, 0.15)
-    local acc = Instance.new("Frame", t)
-    acc.Size = UDim2.new(0, 4, 1, -12); acc.Position = UDim2.new(0, 6, 0, 6)
-    acc.BackgroundColor3 = col; acc.BorderSizePixel = 0; corner(acc, 2)
-    local lbl = Instance.new("TextLabel", t)
-    lbl.Size = UDim2.new(1, -24, 1, 0); lbl.Position = UDim2.new(0, 18, 0, 0); lbl.BackgroundTransparency = 1
-    lbl.Text = text; lbl.Font = Enum.Font.GothamBold; lbl.TextSize = 12; lbl.TextColor3 = C.Text
-    lbl.TextXAlignment = Enum.TextXAlignment.Left; lbl.TextWrapped = true
-    toastCount = toastCount + 1
-    local mine = toastCount
-    tw(t, { Position = UDim2.new(1, -250, 1, -70) }, 0.3, Enum.EasingStyle.Quart)
-    task.delay(2.6, function()
-        tw(t, { Position = UDim2.new(1, 250, 1, -70) }, 0.3, Enum.EasingStyle.Quart)
-        task.wait(0.35); pcall(function() t:Destroy() end)
-    end)
-    return mine
-end
-
--- ===================== BUSCA DE OPÇÕES =====================
-local function runSearch(q)
-    q = tostring(q or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-    local activeHas, firstTab = false, nil
-    for _, it in ipairs(searchItems) do
-        local show = (q == "") or (it.label:find(q, 1, true) ~= nil)
-        pcall(function() it.obj.Visible = show end)
-        if show and q ~= "" then
-            if not firstTab then firstTab = it.tab end
-            if it.tab == activeTab then activeHas = true end
-        end
-    end
-    if q ~= "" and not activeHas and firstTab then selectTab(firstTab) end
-end
-searchBox:GetPropertyChangedSignal("Text"):Connect(function() runSearch(searchBox.Text) end)
-
 -- =====================================================================
 -- COMPONENTES
 -- =====================================================================
@@ -424,13 +337,8 @@ local function Radio(parent, label, key, order, onChange)
         dotIn.Visible = on
         tw(lbl, {TextColor3 = on and C.Text or C.Dim}, 0.12)
     end
-    row.MouseButton1Click:Connect(function()
-        CFG[key] = not CFG[key]; refresh()
-        if onChange then onChange(CFG[key]) end
-        if requestSave then requestSave() end
-    end)
+    row.MouseButton1Click:Connect(function() CFG[key] = not CFG[key]; refresh(); if onChange then onChange(CFG[key]) end end)
     table.insert(radioRefreshers, refresh)
-    table.insert(searchItems, { obj = row, label = tostring(label):lower(), tab = buildTab })
     return row
 end
 
@@ -459,15 +367,12 @@ local function Slider(parent, label, key, minV, maxV, decimals, order, onChange)
         val.Text = tostring(fmt(CFG[key])) .. "/" .. tostring(fmt(maxV))
     end
     update()
-    table.insert(sliderUpdaters, update)
-    table.insert(searchItems, { obj = h, label = tostring(label):lower(), tab = buildTab })
     local dragging = false
     local function setX(x)
         local rel = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
         local v = minV + (maxV - minV) * rel
         if decimals and decimals > 0 then local m = 10 ^ decimals; v = math.floor(v * m + 0.5) / m else v = math.floor(v + 0.5) end
         CFG[key] = v; update(); if onChange then onChange(v) end
-        if requestSave then requestSave() end
     end
     track.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; setX(i.Position.X) end end)
     knob.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end end)
@@ -489,18 +394,11 @@ local function Dropdown(parent, label, key, options, order)
     corner(box, 6); stroke(box, C.Line, 1, 0.3)
     local idx = 1
     for i, o in ipairs(options) do if o == CFG[key] then idx = i end end
-    local function refresh()
-        for i, o in ipairs(options) do if o == CFG[key] then idx = i end end
-        box.Text = tostring(CFG[key])
-    end
-    table.insert(dropdownRefreshers, refresh)
-    table.insert(searchItems, { obj = h, label = tostring(label):lower(), tab = buildTab })
     box.MouseButton1Click:Connect(function()
         idx = idx % #options + 1
         CFG[key] = options[idx]; box.Text = tostring(CFG[key])
         tw(box, {BackgroundColor3 = C.Hover}, 0.08)
         task.delay(0.12, function() tw(box, {BackgroundColor3 = C.Card}, 0.12) end)
-        if requestSave then requestSave() end
     end)
     box.MouseEnter:Connect(function() tw(box, {BackgroundColor3 = C.Hover}, 0.1) end)
     box.MouseLeave:Connect(function() tw(box, {BackgroundColor3 = C.Card}, 0.1) end)
@@ -531,7 +429,6 @@ local function ColorRow(parent, label, startCol, order, apply)
         local col = COLORS[i]
         sw.BackgroundColor3 = col
         pcall(function() apply(col) end)
-        if requestSave then requestSave() end
     end)
     return sw
 end
@@ -550,10 +447,9 @@ local STYLE_ORDER = { "Midnight", "Neva", "SnowHub", "Blood", "Ocean", "Ghost" }
 -- =====================================================================
 -- CONTEÚDO — SILENT
 -- =====================================================================
-buildTab = "Silent"
 local aL, aR = pages["Silent"].left, pages["Silent"].right
 SectionTitle(aL, "Silent Aim", 1)
-Radio(aL, "Enabled", "Aim", 2, function(v) if notify then notify(v and "Silent Aim: LIGADO ✅" or "Silent Aim: DESLIGADO", v and "ok" or "info") end end)
+Radio(aL, "Enabled", "Aim", 2)
 Dropdown(aL, "Hit Part", "HitPart", { "Head", "Torso" }, 3)
 Radio(aL, "Include NPC", "IncludeNPC", 4)
 SectionTitle(aL, "Field of View", 5)
@@ -565,15 +461,9 @@ Radio(aR, "Team Check", "TeamCheck", 2)
 Radio(aR, "Wallbang (atravessa)", "Wallbang", 3)
 Radio(aR, "Fallback (tela)", "FallbackScreen", 4)
 
-SectionTitle(aR, "Aim Lock (câmera)", 5)
-Radio(aR, "Aim Lock", "AimLock", 6, function(v) if notify then notify(v and "Aim Lock: LIGADO 🎯" or "Aim Lock: DESLIGADO", v and "ok" or "info") end end)
-Radio(aR, "Segurar botão direito", "AimLockHold", 7)
-Slider(aR, "Suavidade", "AimLockSmooth", 0.05, 1, 2, 8)
-
 -- =====================================================================
 -- CONTEÚDO — VISUALS
 -- =====================================================================
-buildTab = "Visuals"
 local vL, vR = pages["Visuals"].left, pages["Visuals"].right
 SectionTitle(vL, "Player ESP", 1)
 Radio(vL, "Enabled", "ESP", 2)
@@ -589,7 +479,6 @@ Radio(vR, "Tracer", "Tracer", 4)
 -- =====================================================================
 -- CONTEÚDO — CONFIG
 -- =====================================================================
-buildTab = "Config"
 local cL, cR = pages["Config"].left, pages["Config"].right
 SectionTitle(cL, "Informações", 1)
 local info = Instance.new("Frame", cL)
@@ -616,7 +505,6 @@ credTxt.TextXAlignment = Enum.TextXAlignment.Left; credTxt.TextYAlignment = Enum
 -- =====================================================================
 -- CONTEÚDO — CUSTOMIZE
 -- =====================================================================
-buildTab = "Customize"
 local xL, xR = pages["Customize"].left, pages["Customize"].right
 
 -- ---- ESQUERDA: estilos de painel + cores separadas ----
@@ -694,7 +582,7 @@ fovRing.AnchorPoint = Vector2.new(0.5, 0.5); fovRing.BackgroundTransparency = 1;
 local fovR = Instance.new("UICorner", fovRing); fovR.CornerRadius = UDim.new(1, 0)
 local fovStroke = Instance.new("UIStroke", fovRing); fovStroke.Color = C.Accent; fovStroke.Thickness = 2; fovStroke.Transparency = 0.1
 RunService.RenderStepped:Connect(function()
-    if AccessGranted and CFG.ShowFOV and (CFG.Aim or CFG.AimLock) then
+    if AccessGranted and CFG.ShowFOV and CFG.Aim then
         local m = UIS:GetMouseLocation()
         fovRing.Size = UDim2.fromOffset(CFG.FOV * 2, CFG.FOV * 2)
         fovRing.Position = UDim2.fromOffset(m.X, m.Y)
@@ -719,7 +607,7 @@ local MAXB = #R15Bones
 local function healthColor(p) p = math.clamp(p, 0, 1); if p > 0.5 then return Color3.new((1 - p) * 2, 1, 0) else return Color3.new(1, p * 2, 0) end end
 
 local espLines = Instance.new("ScreenGui")
-espLines.Name = "MidnightESP_v5"; espLines.ResetOnSpawn = false; espLines.DisplayOrder = 20; espLines.IgnoreGuiInset = true; espLines.Parent = GUIPARENT
+espLines.Name = "MidnightESP_v5"; espLines.ResetOnSpawn = false; espLines.DisplayOrder = 20; espLines.IgnoreGuiInset = false; espLines.Parent = GUIPARENT
 local espHolder = Instance.new("ScreenGui")
 espHolder.Name = "MidnightESP_Holder"; espHolder.ResetOnSpawn = false; espHolder.Parent = GUIPARENT
 
@@ -771,15 +659,11 @@ local function hideESP(d)
     for _, l in pairs(d.bones) do l.Visible = false end
 end
 
-local lastTextUpd = 0
 RunService.RenderStepped:Connect(function()
     if not AccessGranted or not CFG.ESP then for _, d in pairs(espCache) do hideESP(d) end; return end
     if not Camera then Camera = workspace.CurrentCamera end
     if not Camera then return end
     local vp = Camera.ViewportSize
-    local now = os.clock()
-    local doText = (now - lastTextUpd) > 0.08   -- nome/vida atualizam ~12x/s (o resto é todo frame)
-    if doText then lastTextUpd = now end
     for plr, d in pairs(espCache) do
         hideESP(d)
         local char = plr.Character; if not char then continue end
@@ -791,17 +675,15 @@ RunService.RenderStepped:Connect(function()
         if CFG.Box then d.hl.Adornee = char; d.hl.Enabled = true end
         if (CFG.Name or CFG.Health) and head then
             d.bb.Adornee = head; d.bb.Enabled = true
-            if doText then
-                if CFG.Name then
-                    local t = plr.Name
-                    if CFG.Distance then t = t .. "  [" .. math.floor((Camera.CFrame.Position - hrp.Position).Magnitude) .. "m]" end
-                    d.nameL.Text = t; d.nameL.Visible = true
-                else d.nameL.Visible = false end
-                if CFG.Health then
-                    local pct = hum.Health / math.max(hum.MaxHealth, 1)
-                    d.hpL.Text = "HP " .. math.floor(hum.Health); d.hpL.TextColor3 = healthColor(pct); d.hpL.Visible = true
-                else d.hpL.Visible = false end
-            end
+            if CFG.Name then
+                local t = plr.Name
+                if CFG.Distance then t = t .. "  [" .. math.floor((Camera.CFrame.Position - hrp.Position).Magnitude) .. "m]" end
+                d.nameL.Text = t; d.nameL.Visible = true
+            else d.nameL.Visible = false end
+            if CFG.Health then
+                local pct = hum.Health / math.max(hum.MaxHealth, 1)
+                d.hpL.Text = "HP " .. math.floor(hum.Health); d.hpL.TextColor3 = healthColor(pct); d.hpL.Visible = true
+            else d.hpL.Visible = false end
         end
         local rp, on = Camera:WorldToViewportPoint(hrp.Position)
         if on and rp.Z > 0 then
@@ -919,8 +801,6 @@ applyStyle = function(name)
     CFG.Sharp = s.sharp
     if setSharp then setSharp(s.sharp) end
     for _, fn in ipairs(radioRefreshers) do pcall(fn) end
-    if requestSave then requestSave() end
-    if notify then notify("Estilo aplicado: " .. name, "ok") end
 end
 
 -- baixa dados de uma URL tentando vários métodos de executor
@@ -982,8 +862,6 @@ setBgImage = function(input, statusLbl)
                 setStat("✔ Imagem aplicada! (ID " .. id .. ")", C.Green)
             end
         end)
-        if requestSave then requestSave() end
-        if notify then notify("Imagem de fundo aplicada", "ok") end
         return
     end
     local content
@@ -1024,8 +902,6 @@ setBgImage = function(input, statusLbl)
         -- garante que a imagem fique visível atrás do conteúdo
         pcall(function() main.BackgroundTransparency = 0 end)
         setStat("✔ Imagem aplicada!", C.Green)
-        if requestSave then requestSave() end
-        if notify then notify("Imagem de fundo aplicada", "ok") end
     else
         setStat("Não foi possível aplicar.", C.Red)
     end
@@ -1042,7 +918,7 @@ if genv then genv.MIDSILENT = S end
 local aimCache = {}
 task.spawn(function()
     while true do
-        if AccessGranted and (CFG.Aim or CFG.AimLock) then
+        if AccessGranted and CFG.Aim then
             local list = {}
             local torso = (CFG.HitPart == "Torso")
             for _, m in ipairs(workspace:GetDescendants()) do
@@ -1072,9 +948,8 @@ RunService.RenderStepped:Connect(function()
     S.minLen   = CFG.MinRayLen
     S.maxOrigin= CFG.MaxOriginDist
     S.wallbang = CFG.Wallbang
-    S.on       = AccessGranted and CFG.Aim          -- controla o HOOK do silent
-    local wantTarget = AccessGranted and (CFG.Aim or CFG.AimLock)  -- alvo p/ silent E/OU aim lock
-    if not wantTarget then S.target = nil; return end
+    S.on       = AccessGranted and CFG.Aim
+    if not S.on then S.target = nil; return end
     if not Camera then Camera = workspace.CurrentCamera end
     if not Camera then return end
     local mouse = UIS:GetMouseLocation()  -- FOV a partir do mouse
@@ -1091,21 +966,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
     S.target = inFov or (CFG.FallbackScreen and onScr or nil)
-end)
-
--- AIM LOCK: trava a câmera no alvo (estilo Midnight antigo)
-RunService.RenderStepped:Connect(function()
-    if not (AccessGranted and CFG.AimLock) then return end
-    -- se "segurar botão direito" ligado, só trava enquanto o botão direito está pressionado
-    if CFG.AimLockHold and not UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then return end
-    local tgt = S.target
-    if not (tgt and tgt.Parent) then return end
-    if not Camera then Camera = workspace.CurrentCamera end
-    if not Camera then return end
-    local from = Camera.CFrame.Position
-    local goal = CFrame.new(from, tgt.Position)
-    local a = math.clamp(CFG.AimLockSmooth or 0.5, 0.05, 1)
-    Camera.CFrame = Camera.CFrame:Lerp(goal, a)
 end)
 
 -- instala o hook UMA vez (guardado por genv)
@@ -1155,79 +1015,8 @@ elseif not hookOK then
     warn("[Midnight Silent] Executor sem suporte a hook — Silent Aim indisponível (ESP funciona normal).")
 end
 
--- =====================================================================
--- SALVAR / CARREGAR CONFIG (persistente entre sessões) + AUTO-SAVE
--- =====================================================================
-local HttpService = game:GetService("HttpService")
-local CFG_FILE = "midnight_silent_config.json"
-local function col2t(c) return { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) } end
-local function t2col(t) return Color3.fromRGB(t[1] or 255, t[2] or 255, t[3] or 255) end
-
-local function saveCfg()
-    if not writefile then return end
-    pcall(function()
-        local data = {
-            CFG = CFG,
-            Theme = {
-                Accent = col2t(C.Accent), BG = col2t(C.BG), Text = col2t(C.Text),
-                Esp = col2t(DRAW), Fov = col2t(fovStroke.Color),
-            },
-        }
-        writefile(CFG_FILE, HttpService:JSONEncode(data))
-    end)
-end
-
--- auto-save com debounce (junta várias mudanças rápidas num único write)
-local saveQueued = false
-requestSave = function()
-    if not writefile or saveQueued then return end
-    saveQueued = true
-    task.delay(1.0, function() saveQueued = false; saveCfg() end)
-end
-
-local function loadCfg()
-    if not (readfile and isfile) then return false end
-    local raw
-    local ok = pcall(function() if isfile(CFG_FILE) then raw = readfile(CFG_FILE) end end)
-    if not ok or not raw or raw == "" then return false end
-    local data
-    local ok2 = pcall(function() data = HttpService:JSONDecode(raw) end)
-    if not ok2 or type(data) ~= "table" then return false end
-    if type(data.CFG) == "table" then
-        for k, v in pairs(data.CFG) do
-            if CFG[k] ~= nil and type(CFG[k]) == type(v) then CFG[k] = v end
-        end
-    end
-    local th = data.Theme
-    if type(th) == "table" then
-        pcall(function() if th.BG then setBgColor(t2col(th.BG)) end end)
-        pcall(function() if th.Text then setTextColor(t2col(th.Text)) end end)
-        pcall(function() if th.Accent then setAccent(t2col(th.Accent)) end end)
-        pcall(function() if th.Esp then setEspColor(t2col(th.Esp)) end end)
-        pcall(function() if th.Fov then setFovColor(t2col(th.Fov)) end end)
-    end
-    pcall(function() setSharp(CFG.Sharp) end)
-    -- reflete os valores carregados na UI
-    for _, fn in ipairs(radioRefreshers) do pcall(fn) end
-    for _, fn in ipairs(sliderUpdaters) do pcall(fn) end
-    for _, fn in ipairs(dropdownRefreshers) do pcall(fn) end
-    if CFG.BgImage and CFG.BgImage ~= "" then pcall(function() setBgImage(CFG.BgImage, nil) end) end
-    return true
-end
-
--- carrega ao iniciar; avisa depois do login
-task.spawn(function()
-    local loaded = loadCfg()
-    while not AccessGranted do task.wait(0.2) end
-    task.wait(0.3)
-    if notify then
-        notify(loaded and "Config carregada ⚙️" or "Midnight Silent Mode pronto", loaded and "ok" or "info")
-    end
-end)
-
 print("=====================================")
 print("  MIDNIGHT SILENT MODE  |  by Th.exe")
 print("  Chave: MID-8271-XJ92-00PQ-9281")
 print("  Silent Aim (ACS) + ESP + FOV")
-print("  Config salva em: " .. CFG_FILE)
 print("=====================================")
